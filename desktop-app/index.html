@@ -3,96 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <title>Presentera!</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';"/>
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="./node_modules/keyboard-keys/keys.css" />
-     
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="./node_modules/keyboard-keys/keys.css"/>
+
     <!-- Bootstrap Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script>let $ = require('jquery');</script>
     <script>require('popper.js');</script>
     <script>require('bootstrap');</script>
     <script>
-      // Handle add item window
-      function createAddWindow(){
-        const url = require('url');
-        const path = require('path');
-        const remote = require('electron').remote;
-        const BrowserWindow = remote.BrowserWindow;
+        // Handle add item window
+        function createAddWindow() {
+            const url = require('url');
+            const path = require('path');
+            const remote = require('electron').remote;
+            const BrowserWindow = remote.BrowserWindow;
 
-        const addWindow = new BrowserWindow({
-          width: 800,
-          height: 600,
-          webPreferences: {
-            preload: path.join(__dirname, 'preloadAdd.js'),
-            nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true,
-            webSecurity: false,
-          }
-        })
+            const addWindow = new BrowserWindow({
+                width: 800,
+                height: 600,
+                webPreferences: {
+                    preload: path.join(__dirname, 'preloadAdd.js'),
+                    nodeIntegration: true,
+                    contextIsolation: false,
+                    enableRemoteModule: true,
+                    webSecurity: false,
+                }
+            })
 
-        addWindow.loadURL(url.format({
-          pathname: path.join(__dirname, 'addAction.html'),
-          protocol: 'file:',
-          slashes:true
-        }));
-        // Handle garbage collection
-        addWindow.on('close', function(){
-          addWindow = null;
-        });
-      }
+            addWindow.loadURL(url.format({
+                pathname: path.join(__dirname, 'addAction.html'),
+                protocol: 'file:',
+                slashes: true
+            }));
+            // Handle garbage collection
+            addWindow.on('close', function () {
+                addWindow = null;
+            });
+        }
 
-      function changeAction(idx, newAction){
-        console.log(idx)
-        console.log(newAction)
-        const fs = require('fs');
-        const path = require('path');
+        function changeAction(idx, newAction) {
+            console.log(idx)
+            console.log(newAction)
+            const fs = require('fs');
+            const path = require('path');
 
-        let rawdata = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
-        let videos = JSON.parse(rawdata);
-        videos[idx].action = newAction
-        // let element = document.getElementById(`dropdownMenuButton${idx}`)
-        // element.innerHTML = "Следующий слайд"
-        $(`#dropdownMenuButton${idx}`).html('Следующий слайд');
+            let rawData = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
+            let videos = JSON.parse(rawData);
+            videos[idx].action = newAction
+            // let element = document.getElementById(`dropdownMenuButton${idx}`)
+            // element.innerHTML = "Следующий слайд"
+            $(`#dropdownMenuButton${idx}`).html('Следующий слайд');
 
-        let data = JSON.stringify(videos);
-        fs.writeFileSync(path.resolve(__dirname, 'configuretion.json'), data, 'utf-8');
-      }
+            let data = JSON.stringify(videos);
+            fs.writeFileSync(path.resolve(__dirname, 'configuretion.json'), data, 'utf-8');
+        }
 
-      function openFileManager() {
-        const remote = require('electron').remote;
-        var dialog = remote.dialog; // Load the dialogs component of the OS
-        //
-        dialog.showOpenDialog((fileNames) => {
-            console.log("HEERE")
-            // fileNames is an array that contains all the selected
-            if(fileNames === undefined){
-                console.log("No file selected");
-                return;
-            }
-          
-            console.log(filepath);
-            fs.readFile(filepath, 'utf-8', (err, data) => {
-                if(err){
-                    alert("An error ocurred reading the file :" + err.message);
+        function openFileManager() {
+            const remote = require('electron').remote;
+            var dialog = remote.dialog; // Load the dialogs component of the OS
+            //
+            dialog.showOpenDialog((fileNames) => {
+                console.log("HEERE")
+                // fileNames is an array that contains all the selected
+                if (fileNames === undefined) {
+                    console.log("No file selected");
                     return;
                 }
-              
-                // Change how to handle the file content
-                console.log("The file content is : " + data);
+
+                console.log(filepath);
+                fs.readFile(filepath, 'utf-8', (err, data) => {
+                    if (err) {
+                        alert("An error ocurred reading the file :" + err.message);
+                        return;
+                    }
+
+                    // Change how to handle the file content
+                    console.log("The file content is : " + data);
+                });
             });
-        });
-        //
-      }
+            //
+        }
 
     </script>
 </head>
 <body style="background: white;">
-  <h1 style="text-align: center;">Создайте свои неповторимые жесты</h1>
-  <div class="container" id="container">
-  </div>
+<h1 style="text-align: center;">Создайте свои неповторимые жесты</h1>
+<div class="container" id="container">
+</div>
 </body>
 </html>
