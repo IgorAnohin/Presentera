@@ -279,6 +279,8 @@ class poseDetector():
         self.mpPose = mp.solutions.pose
         self.pose = self.mpPose.Pose(self.mode, self.upBody, self.smooth,
                                      self.detectionCon, self.trackCon)
+        self.augmented_landmarks = []
+        self.augmented_connections = []
 
     def _to_point(self, landmark):
         point_dict = { "x": landmark.x, "y": landmark.y}
@@ -292,7 +294,7 @@ class poseDetector():
             point_dict["visibility"] = visibility
         return point_dict
 
-    def augment_landmarks(self, landmarks):
+    def foo(self, landmarks):
         new_landmarks = []
         for landmark in landmarks:
             new_landmarks.append(self._to_point(landmark))
@@ -341,7 +343,7 @@ class poseDetector():
             # (NECK, PoseLandmark.LEFT_SHOULDER),
             # (NECK, PoseLandmark.RIGHT_SHOULDER),
             # (NECK, CHEST),
-            (PoseLandmark.RIGHT_SHOULDER, PoseLandmark.LEFT_SHOULDER),
+            # (PoseLandmark.RIGHT_SHOULDER, PoseLandmark.LEFT_SHOULDER),
 
             (PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW),
             (PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST),
@@ -357,7 +359,7 @@ class poseDetector():
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
         if self.results.pose_landmarks:
-            self.augmented_landmarks = self.augment_landmarks(self.results.pose_landmarks.landmark)
+            self.augmented_landmarks = self.foo(self.results.pose_landmarks.landmark)
             self.augmented_connections = self.augment_connections(self.mpPose.UPPER_BODY_POSE_CONNECTIONS)
 
             if draw:
@@ -577,11 +579,11 @@ def animate(i, xs, ys):
     # xs.append(dt.datetime.now().strftime('%H:%M:%S.%f'))
     # ys.append(temp_c)
 
-    xs = xs[:105]
-    ys = ys[:105]
+    xs = xs[-505:]
+    ys = ys[-505:]
     # Draw x and y lists
     ax.clear()
-    ax.plot(xs,      ys)
+    ax.plot(xs, ys)
 
     # Format plot
     plt.xticks(rotation=45, ha='right')
@@ -593,39 +595,46 @@ def animate(i, xs, ys):
 # Set up plot to call animate() function periodically
 ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=100)
 
-threading.Thread(target=plt.show).start()
-# plt.show()
-while True:
-    start_time = time.time()
+# plt.ion()
+# threading.Thread(target=plt.show).start()
+def super_func():
+    global amount
+    global overall_sum
 
-    success, frame = cap.read()
-    if not success:
-        continue
-    frame = detector.estimate_pose(frame)
-    connections_list = detector.get_connections(frame)
-    if len(connections_list) == 0:
-        connections_list = None
+    while True:
+        start_time = time.time()
 
-    np.roll(real_frame_window, -1)
-    real_frame_window[-1] = frame
+        success, frame = cap.read()
+        if not success:
+            continue
+        frame = detector.estimate_pose(frame)
+        connections_list = detector.get_connections(frame)
+        if len(connections_list) == 0:
+            connections_list = None
 
-    real_connections_window[:-1] = real_connections_window[1:]
-    real_connections_window[-1] = connections_list
+        np.roll(real_frame_window, -1)
+        real_frame_window[-1] = frame
 
-    window_score = match_frames_window(sample_frame_window, real_frame_window, sample_connections_window, real_connections_window)
-    print("Window score:", window_score)
+        real_connections_window[:-1] = real_connections_window[1:]
+        real_connections_window[-1] = connections_list
 
-    end_time = time.time()
+        window_score = match_frames_window(sample_frame_window, real_frame_window, sample_connections_window, real_connections_window)
+        print("Window score:", window_score)
 
-    # Add x and y to lists
-    xs.append(dt.datetime.now().strftime('%M:%S.%f'))
-    ys.append(window_score)
+        end_time = time.time()
 
-    cv2.imshow("Image", frame)
-    cv2.waitKey(1)
+        # Add x and y to lists
+        xs.append(dt.datetime.now().strftime('%M:%S.%f'))
+        ys.append(window_score)
 
-    amount += 1
-    diff = (end_time - start_time)
-    fps = int(round(1.0 / diff))
-    overall_sum += fps
-    # print(f"{1000 * diff}ms | {fps}fps | {overall_sum / amount} avg fps")
+        cv2.imshow("Image", frame)
+        cv2.waitKey(1)
+
+        amount += 1
+        diff = (end_time - start_time)
+        fps = int(round(1.0 / diff))
+        overall_sum += fps
+        # print(f"{1000 * diff}ms | {fps}fps | {overall_sum / amount} avg fps")
+
+threading.Thread(target=super_func).start()
+plt.show()
