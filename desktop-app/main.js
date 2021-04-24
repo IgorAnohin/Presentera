@@ -1,6 +1,7 @@
 const { app, BrowserWindow, protocol } = require('electron')
 const path = require('path')
 const console = require('console');
+const { PythonShell } = require('python-shell');
 if (process.env.NODE_ENV !== 'development') {
   global.__static = require('path').join(__dirname, '.').replace(/\\/g, '\\\\')
 }
@@ -24,6 +25,12 @@ function createWindow () {
 
   win.loadFile('index.html')
 }
+
+PythonShell.run(" hello.py", function (err, results) {
+    if (err) throw err;
+    console.log('hello.py finished.');
+    console.log('results', results);
+});
 
 // And this anywhere:
 function registerLocalVideoProtocol () {

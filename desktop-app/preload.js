@@ -40,7 +40,7 @@ window.addEventListener('DOMContentLoaded', () => {
             </div>
             <div style="height: 5px;"></div>
             <video controls autoplay width="200px" height="360px">
-              <source src="local-video://IMG_4315.MOV.mp4" type="video/mp4"> -->
+              <source src="local-video://${video.src}" type="video/mp4"> -->
             </video>
           </div>
           `

@@ -28,12 +28,12 @@ window.addEventListener('DOMContentLoaded', () => {
       $(`#row${raw}`).append(
         `
         <div class="col">
-          <button onclick="changeAction(${idx}, 'IMG_4315.MOV.mp4'); " style="width: 200px;" class="btn btn-primary" type="button" id="dropdownMenuButton${idx}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <button onclick="changeAction(${idx}, ${video.src}); " style="width: 200px;" class="btn btn-primary" type="button" id="dropdownMenuButton${idx}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             "Выбрать"
           </button>
           <div style="height: 5px;"></div>
           <video controls autoplay width="200px" height="360px">
-            <source src="local-video://IMG_4315.MOV.mp4" type="video/mp4"> -->
+            <source src="local-video://${video.src}" type="video/mp4"> -->
           </video>
         </div>
         `

@@ -1,1 +1,10 @@
-[{"action_readable":"fkjnaskjdorward","src":"forwatd"},{"action_readable":"forward","src":"forwatd","action":"Предыдущий слайд"},{"action_readable":"forward","src":"forwatd","action":"Предыдущий слайд"},{"action_readable":"forward","src":"forwatd","action":"Следующий слайд"},{"src":"IMG_4315.MOV.mp4"},{"src":"IMG_4315.MOV.mp4"}]
+[
+  {
+    "src": "full_next_2left.mp4",
+    "action": "Предыдущий слайд"
+  },
+  {
+    "src": "full_next_2left.mp4",
+    "action": "Следующий слайд"
+  }
+]
