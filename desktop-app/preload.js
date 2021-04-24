@@ -1,22 +1,22 @@
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("DOMContentLoaded", () => {
     const replaceText = (selector, text) => {
         const element = document.getElementById(selector)
         if (element) element.innerText = text
     }
 
-    for (const type of ['chrome', 'node', 'electron']) {
+    for (const type of ["chrome", "node", "electron"]) {
         replaceText(`${type}-version`, process.versions[type])
     }
 
-    const fs = require('fs');
-    const path = require('path');
+    const fs = require("fs");
+    const path = require("path");
 
-    let rawdata = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
+    let rawdata = fs.readFileSync(path.resolve(__dirname, "configuretion.json"));
     let videos = JSON.parse(rawdata);
     let videoLenWithOffset = videos.length + 1;
-    for (var raw = 0; raw < videoLenWithOffset / 3; raw++) {
+    for (let raw = 0; raw < videoLenWithOffset / 3; raw++) {
         console.log("ROW")
-        $('#container').append(
+        $("#container").append(
             `
           <div id="row${raw}" class="row" style="display: flex;align-items: center;">
           </div>

@@ -11,22 +11,22 @@
 
     <!-- Bootstrap Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script>let $ = require('jquery');</script>
-    <script>require('popper.js');</script>
-    <script>require('bootstrap');</script>
+    <script>let $ = require("jquery");</script>
+    <script>require("popper.js");</script>
+    <script>require("bootstrap");</script>
     <script>
         // Handle add item window
         function createAddWindow() {
-            const url = require('url');
-            const path = require('path');
-            const remote = require('electron').remote;
+            const url = require("url");
+            const path = require("path");
+            const remote = require("electron").remote;
             const BrowserWindow = remote.BrowserWindow;
 
             const addWindow = new BrowserWindow({
                 width: 800,
                 height: 600,
                 webPreferences: {
-                    preload: path.join(__dirname, 'preloadAdd.js'),
+                    preload: path.join(__dirname, "preloadAdd.js"),
                     nodeIntegration: true,
                     contextIsolation: false,
                     enableRemoteModule: true,
@@ -35,12 +35,12 @@
             })
 
             addWindow.loadURL(url.format({
-                pathname: path.join(__dirname, 'addAction.html'),
-                protocol: 'file:',
+                pathname: path.join(__dirname, "addAction.html"),
+                protocol: "file:",
                 slashes: true
             }));
             // Handle garbage collection
-            addWindow.on('close', function () {
+            addWindow.on("close", function () {
                 addWindow = null;
             });
         }
@@ -48,23 +48,22 @@
         function changeAction(idx, newAction) {
             console.log(idx)
             console.log(newAction)
-            const fs = require('fs');
-            const path = require('path');
+            const fs = require("fs");
+            const path = require("path");
 
-            let rawData = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
+            let rawData = fs.readFileSync(path.resolve(__dirname, "configuretion.json"));
             let videos = JSON.parse(rawData);
             videos[idx].action = newAction
             // let element = document.getElementById(`dropdownMenuButton${idx}`)
             // element.innerHTML = "Следующий слайд"
-            $(`#dropdownMenuButton${idx}`).html('Следующий слайд');
+            $(`#dropdownMenuButton${idx}`).html("Следующий слайд");
 
             let data = JSON.stringify(videos);
-            fs.writeFileSync(path.resolve(__dirname, 'configuretion.json'), data, 'utf-8');
+            fs.writeFileSync(path.resolve(__dirname, "configuretion.json"), data, "utf-8");
         }
 
         function openFileManager() {
-            const remote = require('electron').remote;
-            var dialog = remote.dialog; // Load the dialogs component of the OS
+            const dialog = require("electron").remote.dialog; // Load the dialogs component of the OS
             //
             dialog.showOpenDialog((fileNames) => {
                 console.log("HEERE")
@@ -75,7 +74,7 @@
                 }
 
                 console.log(filepath);
-                fs.readFile(filepath, 'utf-8', (err, data) => {
+                fs.readFile(filepath, "utf-8", (err, data) => {
                     if (err) {
                         alert("An error ocurred reading the file :" + err.message);
                         return;
