@@ -17,18 +17,23 @@
     <script>
       // Handle add item window
       function createAddWindow(){
+        const url = require('url');
+        const path = require('path');
         const remote = require('electron').remote;
         const BrowserWindow = remote.BrowserWindow;
 
-        addWindow = new BrowserWindow({
-          width: 300,
-          height:200,
-          title:'Add Shopping List Item',
+        const addWindow = new BrowserWindow({
+          width: 800,
+          height: 600,
           webPreferences: {
+            preload: path.join(__dirname, 'preloadAdd.js'),
             nodeIntegration: true,
             contextIsolation: false,
-        }
-        });
+            enableRemoteModule: true,
+            webSecurity: false,
+          }
+        })
+
         addWindow.loadURL(url.format({
           pathname: path.join(__dirname, 'addAction.html'),
           protocol: 'file:',

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Presentera!</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="./node_modules/keyboard-keys/keys.css" />
+     
+    <!-- Bootstrap Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script>let $ = require('jquery');</script>
+    <script>require('popper.js');</script>
+    <script>require('bootstrap');</script>
+    <script>
+      function changeAction(idx, videoSRC){
+        const remote = require('electron').remote;
+        console.log(idx)
+        console.log(videoSRC)
+        const fs = require('fs');
+        const path = require('path');
+
+        let rawdata = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
+        let videos = JSON.parse(rawdata);
+        videos.push({"src": videoSRC})
+
+        let data = JSON.stringify(videos);
+        fs.writeFileSync(path.resolve(__dirname, 'configuretion.json'), data, 'utf-8');
+
+        var window = remote.getCurrentWindow();
+        window.close();
+      }
+
+    </script>
+</head>
+<body style="background: white;">
+  <h1 style="text-align: center;">Доступные шаблоны движений</h1>
+  <div class="container" id="container">
+  </div>
+</body>
+</html>
