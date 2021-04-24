@@ -1,7 +1,6 @@
 const { app, BrowserWindow, protocol } = require('electron')
 const path = require('path')
 const console = require('console');
-const { PythonShell } = require('python-shell');
 if (process.env.NODE_ENV !== 'development') {
   global.__static = require('path').join(__dirname, '.').replace(/\\/g, '\\\\')
 }
@@ -26,11 +25,27 @@ function createWindow () {
   win.loadFile('index.html')
 }
 
-PythonShell.run(" hello.py", function (err, results) {
-    if (err) throw err;
-    console.log('hello.py finished.');
-    console.log('results', results);
-});
+const input = {value: "Node.JS"};
+const result = {textContent: null};
+
+function sendToPython() {
+    const python = require('child_process').spawn('python', ['./py/hello.py', input.value]);
+    python.stdout.on('data', function (data) {
+        const inputData = data.toString('utf8');
+        console.log("Python response: ", inputData);
+
+        result.textContent = inputData;
+    });
+
+    python.stderr.on('data', (data) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    python.on('close', (code) => {
+        console.log(`child process exited with code ${code}`);
+    });
+}
+sendToPython();
 
 // And this anywhere:
 function registerLocalVideoProtocol () {
