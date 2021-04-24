@@ -377,9 +377,16 @@ class poseDetector():
 
         landmarks = self.get_landmarks()
         connections = self.augmented_connections
+        debug = []
         if landmarks and connections:
             for (first_none_idx, second_node_idx) in connections:
                 first_node, second_node = landmarks[first_none_idx], landmarks[second_node_idx]
+                if first_node["visibility"] < 0.6 or second_node["visibility"] < 0.6:
+                    self.connections_list.append(None)
+                    self.connections_list.append(None)
+
+                    continue
+                debug.append((landmarks, first_node["visibility"], second_node["visibility"]))
                 first_node, second_node = (first_node["x"], first_node["y"]), (second_node["x"], second_node["y"])
 
                 first_node = (pixel_width*first_node[0], pixel_height*first_node[1])
@@ -428,8 +435,26 @@ conf1 = [1.0 for x in connections1]
 
 
 def crop_and_resize_matching(connections1, connections2):
-    connections1_new = np.array(connections1)
-    connections2_new = np.array(connections2)
+    missed_keys = 0
+    total_keys = len(connections1)
+    idx = 0
+
+    con1_without_none = []
+    con2_without_none = []
+    for con1, con2 in zip(connections1, connections2):
+        if con1 is None or con2 is None:
+            missed_keys += 1
+            continue
+        con1_without_none.append(con1)
+        con2_without_none.append(con2)
+
+    connections1_new = np.array(con1_without_none)
+    connections2_new = np.array(con2_without_none)
+
+    if not con1_without_none:
+        return (connections1_new, connections2_new, (0, 0))
+
+    print(total_keys, len(connections2_new))
 
     connections1_new[:, 0] = connections1_new[:, 0] - min(connections1_new[:, 0])
     connections1_new[:, 1] = connections1_new[:, 1] - min(connections1_new[:, 1])
@@ -443,7 +468,11 @@ def crop_and_resize_matching(connections1, connections2):
     connections1_new[:, 0] = connections1_new[:, 0] * resize_x
     connections1_new[:, 1] = connections1_new[:, 1] * resize_y
 
-    return (connections1_new, connections2_new, similarity_score(connections1_new, connections2_new))
+    cosine_score, weighted_score = similarity_score(connections1_new, connections2_new)
+    bounty = (total_keys - missed_keys) / total_keys
+    cosine_score *= bounty
+    weighted_score *= bounty
+    return (connections1_new, connections2_new, (cosine_score, weighted_score))
 
 
 # In[54]:
@@ -601,6 +630,7 @@ def super_func():
     global amount
     global overall_sum
 
+    idx = 0
     while True:
         start_time = time.time()
 
@@ -624,7 +654,8 @@ def super_func():
         end_time = time.time()
 
         # Add x and y to lists
-        xs.append(dt.datetime.now().strftime('%M:%S.%f'))
+        xs.append(idx)
+        idx += 1
         ys.append(window_score)
 
         cv2.imshow("Image", frame)
