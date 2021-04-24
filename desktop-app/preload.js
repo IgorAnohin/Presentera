@@ -1,33 +1,33 @@
 window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
+    const replaceText = (selector, text) => {
+        const element = document.getElementById(selector)
+        if (element) element.innerText = text
+    }
 
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }
+    for (const type of ['chrome', 'node', 'electron']) {
+        replaceText(`${type}-version`, process.versions[type])
+    }
 
-  const fs = require('fs');
-  const path = require('path');
+    const fs = require('fs');
+    const path = require('path');
 
-  let rawdata = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
-  let videos = JSON.parse(rawdata);
-  let videoLenWithOffset = videos.length + 1;
-  for (var raw = 0; raw < videoLenWithOffset / 3; raw++) {
-    console.log("ROW")
-    $('#container' ).append(
-        `
+    let rawdata = fs.readFileSync(path.resolve(__dirname, 'configuretion.json'));
+    let videos = JSON.parse(rawdata);
+    let videoLenWithOffset = videos.length + 1;
+    for (var raw = 0; raw < videoLenWithOffset / 3; raw++) {
+        console.log("ROW")
+        $('#container').append(
+            `
           <div id="row${raw}" class="row" style="display: flex;align-items: center;">
           </div>
         `)
 
-    let idx = raw * 3
-    for (; idx < videoLenWithOffset && idx < (raw + 1) * 3; idx ++) {
-      if (idx < videos.length) {
-        let video = videos[idx]
-        $(`#row${raw}`).append(
-          `
+        let idx = raw * 3
+        for (; idx < videoLenWithOffset && idx < (raw + 1) * 3; idx++) {
+            if (idx < videos.length) {
+                let video = videos[idx]
+                $(`#row${raw}`).append(
+                    `
           <div class="col">
             <div class="dropdown">
               <button style="width: 200px;" class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton${idx}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -44,11 +44,11 @@ window.addEventListener('DOMContentLoaded', () => {
             </video>
           </div>
           `
-        ); 
-        console.log(video);
-      } else {
-        $(`#row${raw}`).append(
-          `
+                );
+                console.log(video);
+            } else {
+                $(`#row${raw}`).append(
+                    `
           <div class="col">
             <div class="dropdown">
               <button style="width: 200px;" class="btn btn-primary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -84,17 +84,17 @@ window.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
           `
-        ); 
-      }
-    }
+                );
+            }
+        }
 
-    for (; idx < (raw + 1) * 3; idx ++) {
-      $(`#row${raw}`).append(
-        `
+        for (; idx < (raw + 1) * 3; idx++) {
+            $(`#row${raw}`).append(
+                `
         <div class="col">
         </div>
         `
-      ); 
+            );
+        }
     }
-  }
 })
