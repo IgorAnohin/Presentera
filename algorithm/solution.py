@@ -449,13 +449,13 @@ def infinity_worker(d, return_value: bool = False):
 
     if DEBUG:
         for video_name in d:
-            path = VIDEOS_FOLDER / video_name
+            path = video_name
             print("Loading image:", path)
             video_to_images(f"{path}.mp4", path)
 
     sample_frames_lists = []
     for video_name in d:
-        path = VIDEOS_FOLDER / video_name
+        path = Path(video_name)
         sample_frame_paths = list(sorted(path.glob(FRAME_PATTERN)))
         window_size = min(30, len(sample_frame_paths))
 
@@ -491,7 +491,8 @@ def infinity_worker(d, return_value: bool = False):
                 data.xs.append(0)
             data.ys.append(window_score)
 
-            yield gesture.action
+            if return_value:
+                yield gesture.action
 
             if window_score > 0.95:
                 print(f"Window triggered with score: {window_score} for {gesture.action}. Max {max(data.ys)}")
@@ -525,7 +526,7 @@ import pyautogui, time
 
 
 def main_without_plotting():
-    config_file = "/home/ianokhin/Documents/electron-apps/my-electron-app/desktop-app/configuretion.json"
+    config_file = "./configuretion.json"
 
     data_dict = dict()
     video_to_action_dict = {}
@@ -541,39 +542,51 @@ def main_without_plotting():
     for video_triggered in infinity_worker(data_dict, True):
         print("Detected action:", video_triggered)
         if video_to_action_dict[video_triggered] == "Следующий слайд":
-            pyautogui.keyDown('alt')
-            time.sleep(.2)
-            pyautogui.press('tab')
-            time.sleep(.2)
-            pyautogui.keyUp('alt')
+            pass
+            # pyautogui.keyDown('alt')
+            # time.sleep(.2)
+            # pyautogui.press('tab')
+            # time.sleep(.2)
+            # pyautogui.keyUp('alt')
         elif video_to_action_dict[video_triggered] == "Предыдущий слайд":
-            pyautogui.press('left')
+            # pyautogui.press('left')
+            pass
         else:
             print("Nothing")
 
 
+def test(data_dict):
+    for _ in infinity_worker(data_dict):
+        pass
+
+
 def main():
-    # SHORT_NEXT_1FORWARD = VIDEOS_FOLDER / "short_next_1forward"
-    # SHORT_NEXT_1LEFT = VIDEOS_FOLDER / "short_next_2left"
-    d = {
-        "short_next_1forward": PlotData([], []),
-        "slides-back": PlotData([], [])
-    }
+    config_file = "./configuretion.json"
+
+    data_dict = dict()
+    video_to_action_dict = {}
 
     anims = []
     figs = []
-    for template in d:
-        fig = plt.figure()
-        figs.append(fig)
-        ax = fig.add_subplot(1, 1, 1)
-        data = d[template]
-        an = animation.FuncAnimation(fig, animate, fargs=(ax, data), interval=100)
-        anims.append(an)
 
-    threading.Thread(target=infinity_worker, args=(d,)).start()
+    with open(config_file) as config_file:
+        config = json.load(config_file)
+        print(config)
+        for entry in config:
+            video = entry["src"].replace(".mp4", "")
+            data_dict[video] = PlotData([], [])
+            video_to_action_dict[video] = entry["action"]
+
+            fig = plt.figure()
+            figs.append(fig)
+            ax = fig.add_subplot(1, 1, 1)
+            an = animation.FuncAnimation(fig, animate, fargs=(ax, data_dict[video]), interval=100)
+            anims.append(an)
+
+    threading.Thread(target=test, args=(data_dict,)).start()
     plt.show()
 
 
 if __name__ == "__main__":
-    # main()
-    main_without_plotting()
+    main()
+    # main_without_plotting()
