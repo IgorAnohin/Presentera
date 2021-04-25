@@ -565,19 +565,15 @@ def main_without_plotting():
         else:
             print("Nothing")
 
+pyautogui.FAILSAFE = False
 
 def test(data_dict):
     for video_triggered in infinity_worker(data_dict):
         print("Action:", video_triggered)
         if video_triggered == "videos/short_next_1forward":
-
-            pyautogui.press('w')
-
-            pyautogui.press('right')
+            pyautogui.press('space')
         elif video_triggered == "videos/slides-back":
             pyautogui.press('left')
-            pyautogui.press('w')
-
         else:
             print("Nothing")
 
