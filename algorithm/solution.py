@@ -493,11 +493,21 @@ def infinity_worker(d, return_value: bool = False):
                 data.xs.append(0)
             data.ys.append(window_score)
 
-            if window_score > 0.96 and len(data.ys) > 1 and data.ys[-2] < 0.95:
-                print(f"Window triggered with score: {window_score} for {gesture.action}. Max {max(data.ys)}")
-                if time.time() - previous_action_time > 5:
-                    previous_action_time = time.time()
-                    yield gesture.action
+            if len(data.ys) > 100:
+                # print(f"Score {window_score} previous {data.ys[-10]}")
+
+                last_100 = data.ys[-100:]
+                avg_y = sum(last_100) / 100
+                max_y = max(last_100)
+                min_y = min(last_100)
+                dist = max_y = min_y
+                global_max_y = max(data.ys)
+                if dist > 0.02  and avg_y > 0.8 and window_score > 0.95 and \
+                        window_score > (global_max_y * 0.99) and window_score > min(avg_y * 1.04, max_y):
+                    print(f"Window triggered with score: {window_score} for {gesture.action}. Max {global_max_y}, AVG: {avg_y}")
+                    if time.time() - previous_action_time > 5:
+                        previous_action_time = time.time()
+                        yield gesture.action
 
 
         cv2.imshow("Image", frame)
@@ -543,15 +553,15 @@ def main_without_plotting():
     for video_triggered in infinity_worker(data_dict, True):
         print("Detected action:", video_triggered)
         if video_to_action_dict[video_triggered] == "Следующий слайд":
-            pass
             # pyautogui.keyDown('alt')
             # time.sleep(.2)
             # pyautogui.press('tab')
             # time.sleep(.2)
             # pyautogui.keyUp('alt')
+
+            pyautogui.press('right')
         elif video_to_action_dict[video_triggered] == "Предыдущий слайд":
-            # pyautogui.press('left')
-            pass
+            pyautogui.press('left')
         else:
             print("Nothing")
 
