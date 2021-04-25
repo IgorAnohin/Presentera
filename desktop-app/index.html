@@ -22,7 +22,7 @@
             const remote = require("electron").remote;
             const BrowserWindow = remote.BrowserWindow;
 
-            const addWindow = new BrowserWindow({
+            var addWindow = new BrowserWindow({
                 width: 800,
                 height: 600,
                 webPreferences: {
@@ -87,11 +87,34 @@
             //
         }
 
+        function sendToPython() {
+            const python = require("child_process").spawn("/bin/bash", ["test.sh"]);
+            python.stdout.on("data", function (data) {
+                const inputData = data.toString("utf8");
+                console.log("Python response: ", inputData);
+            });
+        
+            python.stderr.on("data", (data) => {
+                console.error(`stderr: ${data}`);
+            });
+        
+            python.on("close", (code) => {
+                console.log(`child process exited with code ${code}`);
+            });
+        }
+
     </script>
 </head>
 <body style="background: white;">
 <h1 style="text-align: center;">Создайте свои неповторимые жесты</h1>
 <div class="container" id="container">
 </div>
+
+<div class="container">
+        <button class="btn btn-primary" type="button" onclick="sendToPython()">
+            Запустить
+        </button>
+</div>
+
 </body>
 </html>

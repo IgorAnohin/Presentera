@@ -26,24 +26,6 @@ function createWindow() {
     win.loadFile("index.html")
 }
 
-function sendToPython() {
-    const python = require("child_process").spawn("python", ["./py/hello.py"]);
-    python.stdout.on("data", function (data) {
-        const inputData = data.toString("utf8");
-        console.log("Python response: ", inputData);
-    });
-
-    python.stderr.on("data", (data) => {
-        console.error(`stderr: ${data}`);
-    });
-
-    python.on("close", (code) => {
-        console.log(`child process exited with code ${code}`);
-    });
-}
-
-sendToPython();
-
 // And this anywhere:
 function registerLocalVideoProtocol() {
     protocol.registerFileProtocol("local-video", (request, callback) => {

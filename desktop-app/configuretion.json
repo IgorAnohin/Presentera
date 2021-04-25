@@ -1,10 +1,10 @@
 [
   {
-    "src": "short_next_1forward.mp4",
+    "src": "videos/short_next_1forward.mp4",
     "action": "Предыдущий слайд"
   },
   {
-    "src": "slides-back.mp4",
+    "src": "videos/slides-back.mp4",
     "action": "Следующий слайд"
   }
 ]
