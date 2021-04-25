@@ -362,20 +362,20 @@ def match_frames_window(sample_frame_window, real_frame_window, sample_connectio
 
     score_index = 0
     scores = np.zeros(length, dtype=float)
-    print("Start")
+    # print("Start")
     for (sample_pose, real_pose) in zip(sample_connections_window, real_connections_window):
         if (sample_pose is None) or (real_pose is None):
             score_index += 1
             continue
 
         (_, _, (cosine_distance, weighted_distance)) = crop_and_resize_matching(sample_pose, real_pose)
-        print("Cosine", cosine_distance)
+        # print("Cosine", cosine_distance)
         scores[score_index] = cosine_distance
         score_index += 1
 
     # print("Scores:", scores)
     final_score = np.sum(scores) / length  # here probably could be amount of successful additions in loop
-    print("Stop. Final:", final_score)
+    # print("Stop. Final:", final_score)
     return final_score
 
 
@@ -457,7 +457,7 @@ def infinity_worker(d, return_value: bool = False):
     for video_name in d:
         path = Path(video_name)
         sample_frame_paths = list(sorted(path.glob(FRAME_PATTERN)))
-        window_size = min(30, len(sample_frame_paths))
+        window_size = min(15, len(sample_frame_paths))
 
         sample_frame_window, sample_connections_window = initialize_sample(sample_frame_paths, window_size)
         gesture = Gesture(video_name, sample_frame_window, sample_connections_window)
@@ -465,6 +465,8 @@ def infinity_worker(d, return_value: bool = False):
         sample_frames_lists.append(gesture)
 
     real_frame_window, real_connections_window = prepare_initial_real_frame(detector, window_size)
+
+    previous_action_time = 0
 
     while True:
         success, frame = cap.read()
@@ -491,12 +493,10 @@ def infinity_worker(d, return_value: bool = False):
                 data.xs.append(0)
             data.ys.append(window_score)
 
-            if return_value:
-                yield gesture.action
-
-            if window_score > 0.95:
+            if window_score > 0.96 and len(data.ys) > 1 and data.ys[-2] < 0.95:
                 print(f"Window triggered with score: {window_score} for {gesture.action}. Max {max(data.ys)}")
-                if return_value:
+                if time.time() - previous_action_time > 5:
+                    previous_action_time = time.time()
                     yield gesture.action
 
 
@@ -508,6 +508,7 @@ def infinity_worker(d, return_value: bool = False):
 class PlotData:
     xs: list
     ys: list
+
 
 def animate(i, ax, data: PlotData):
     xs = data.xs[-505:]
@@ -556,8 +557,8 @@ def main_without_plotting():
 
 
 def test(data_dict):
-    for _ in infinity_worker(data_dict):
-        pass
+    for action in infinity_worker(data_dict):
+        print("Action:", action)
 
 
 def main():
