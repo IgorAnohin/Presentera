@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import IntEnum
 from typing import List
 
@@ -7,13 +6,7 @@ import mediapipe as mp
 import cv2 as cv
 
 import drawing_utils
-
-
-@dataclass
-class VisiblePoint2D:
-    x: float
-    y: float
-    visibility: float = 1.0
+from visible_point_2d import VisiblePoint2D
 
 
 def to_vector(p1: VisiblePoint2D, p2: VisiblePoint2D) -> VisiblePoint2D:

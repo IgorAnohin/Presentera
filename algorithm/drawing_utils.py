@@ -25,7 +25,7 @@ from mediapipe.framework.formats import detection_pb2
 from mediapipe.framework.formats import location_data_pb2
 from mediapipe.framework.formats import landmark_pb2
 
-from pose_detector import VisiblePoint2D
+from visible_point_2d import VisiblePoint2D
 
 PRESENCE_THRESHOLD = 0.5
 RGB_CHANNELS = 3
