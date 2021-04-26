@@ -15,7 +15,7 @@
 """MediaPipe solution drawing utils."""
 
 import math
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import cv2
 import dataclasses
@@ -24,6 +24,8 @@ import numpy as np
 from mediapipe.framework.formats import detection_pb2
 from mediapipe.framework.formats import location_data_pb2
 from mediapipe.framework.formats import landmark_pb2
+
+from pose_detector import VisiblePoint2D
 
 PRESENCE_THRESHOLD = 0.5
 RGB_CHANNELS = 3
@@ -113,7 +115,7 @@ def draw_detection(
 
 def draw_landmarks(
     image: np.ndarray,
-    landmark_list: landmark_pb2.NormalizedLandmarkList,
+    landmark_list: List[VisiblePoint2D],
     connections: List[Tuple[int, int]] = None,
     landmark_drawing_spec: DrawingSpec = DrawingSpec(color=RED_COLOR),
     connection_drawing_spec: DrawingSpec = DrawingSpec()):
@@ -141,23 +143,21 @@ def draw_landmarks(
     raise ValueError('Input image must contain three channel rgb data.')
   image_rows, image_cols, _ = image.shape
   idx_to_coordinates = {}
-  for idx, landmark in enumerate(landmark_list):
   #for idx, landmark in enumerate(landmark_list.landmark):
     #if ((landmark.HasField('visibility') and
     #     landmark.visibility < VISIBILITY_THRESHOLD) or
     #    (landmark.HasField('presence') and
     #     landmark.presence < PRESENCE_THRESHOLD)):
     #  continue
-    if (('visibility' in landmark and
-         landmark["visibility"] < VISIBILITY_THRESHOLD) or
-        ('presence' in landmark and
-         landmark["presence"] < PRESENCE_THRESHOLD)):
-      continue
-    #landmark_px = _normalized_to_pixel_coordinates(landmark.x, landmark.y,
-    landmark_px = _normalized_to_pixel_coordinates(landmark["x"], landmark["y"],
-                                                   image_cols, image_rows)
-    if landmark_px:
-      idx_to_coordinates[idx] = landmark_px
+  for idx, landmark in enumerate(landmark_list):
+      visible = (landmark.visible >= VISIBILITY_THRESHOLD)
+      present = True  # (landmark.present >= PRESENCE_THRESHOLD)
+      if not visible or not present:
+          continue
+      landmark_px = _normalized_to_pixel_coordinates(landmark.x, landmark.y,
+                                                     image_cols, image_rows)
+      if landmark_px:
+          idx_to_coordinates[idx] = landmark_px
   if connections:
     #num_landmarks = len(landmark_list.landmark)
     num_landmarks = len(landmark_list)
