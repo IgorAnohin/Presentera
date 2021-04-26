@@ -1,81 +1,77 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Utilities
+import json
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
-import json
 
-
-import cv2
 import cv2 as cv
-import mediapipe as mp
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import numpy as np
-from mediapipe.python.solutions.pose import PoseLandmark
+import pyautogui
 
 import utils
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from pose_detector import PoseDetector
 
-from dataclasses import dataclass
-import os
+# It's not safe to use, but we had to to this for presentation :(
+pyautogui.FAILSAFE = False
+
+WINDOW_MAXIMAL_SIZE = 15
+ACTION_TRIGGER_TIMEOUT = 5
+
+CONFIGURATION_PATH = Path("./configuration.json")
+
+VIDEOS_FOLDER = Path("./videos")
+# SHORT_NEXT_4_INCORRECT = VIDEOS_FOLDER / "short_next_4incorrect"
+
+SHORT_NEXT_1FORWARD = VIDEOS_FOLDER / "short_next_1forward"
+SHORT_NEXT_1LEFT = VIDEOS_FOLDER / "short_next_2left"
+BACK = VIDEOS_FOLDER / "slides-back"
+
+_FRAME_PATTERN = "frame_*.jpg"
+_DEBUG = True
 
 
-def to_vector(p1, p2):
-    x1, y1 = p1["x"], p1["y"]
-    x2, y2 = p2["x"], p2["y"]
-    return (x2 - x1), (y2 - y1)
+@dataclass()
+class Gesture:
+    action: str
+    sample_frame_window: list
+    sample_connections_window: list
 
 
-def vec_angle(p1_1, p1_2, p2_1, p2_2):
-    x1, y1 = to_vector(p1_1, p1_2)
-    x2, y2 = to_vector(p2_1, p2_2)
-    return (x1 * x2 + y1 * y2) / (((x1 * x1 + y1 * y1) * (x2 * x2 + y2 * y2)) ** 0.5)
+@dataclass
+class PlotData:
+    xs: list
+    ys: list
 
 
-def find_normal(line_point1, line_point2, point):
-    x1, y1 = line_point1["x"], line_point1["y"]
-    x2, y2 = line_point2["x"], line_point2["y"]
-    x3, y3 = point["x"], point["y"]
-
-    dx = x2 - x1
-    dy = y2 - y1
-
-    mag = (dx * dx + dy * dy) ** 0.5
-    dx /= mag
-    dy /= mag
-
-    lambd = (dx * (x3 - x1)) + (dy * (y3 - y1))
-    x4 = (dx * lambd) + x1
-    y4 = (dy * lambd) + y1
-    res = {"x": x4, "y": y4}
-    return res
-
-def video_to_images(video_path, out_path):
+def video_to_images(video_file: Path, out_dir: Path):
     """
-
-    :param video_path: path to videofile
-    :param out_path: path to output file
+    :param video_file: path to video file
+    :param out_dir: path to output file
     :return: None
-
-    >>> video_to_images('videos/short_next_1forward.mp4', './')
-    None
-    >>> video_to_images(f"{SHORT_NEXT_4_INCORRECT}.mp4", f"{SHORT_NEXT_4_INCORRECT}")
-    None
     """
-    os.system(f"mkdir -p {out_path}")
+    if not video_file.exists():
+        raise ValueError(f"Video file does not exist: {video_file}")
 
-    vidcap = cv.VideoCapture(video_path)
-    success, image = vidcap.read()
+    if not out_dir.exists():
+        out_dir.mkdir()
+
+    capture = cv.VideoCapture(str(video_file))
+
     count = 0
-    while success:
-        cv.imwrite(f"{out_path}/frame_{count:0>3d}.jpg", image)  # save frame as JPEG file
-        success, image = vidcap.read()
-        print('Read a new frame: ', success)
+    while True:
+        success, image = capture.read()
+        if not success:
+            break
+
+        frame_out_path: Path = out_dir / f"frame_{count:0>3d}.jpg"
+        cv.imwrite(frame_out_path, image)  # save frame as JPEG file
         count += 1
 
-# ### Load Images
 
 def similarity_score(pose1, pose2):
     p1 = []
@@ -125,189 +121,6 @@ def similarity_score(pose1, pose2):
     return cosine_distance, 0
 
 
-# See https://google.github.io/mediapipe/images/mobile/pose_tracking_full_body_landmarks.png
-BODY_PARTS = {
-    "Head": 25,  # Augmented data
-    # "Neck": ...,
-    # "Neck": 0, # It's a nose actually
-    "Neck": 26,  # Augmented data
-    "RShoulder": 12,
-    "RElbow": 14,
-    "RWrist": 16,
-    "LShoulder": 11,
-    "LElbow": 13,
-    "LWrist": 15,
-    "RHip": 24,
-    # "RKnee": 26, # because we're using simplified model
-    # "RAnkle": 28, # because we're using simplified model
-    "LHip": 23,
-    # "LKnee": 25, # because we're using simplified model
-    # "LAnkle": 27 # because we're using simplified model
-    # "Chest": ...
-    "Chest": 27  # Augmented data
-    # "Background": ...
-}
-
-POSE_PAIRS = [
-    ["Head", "Neck"],
-    ["Neck", "RShoulder"],
-    ["RShoulder", "RElbow"],
-    ["RElbow", "RWrist"],
-    ["Neck", "LShoulder"],
-    ["LShoulder", "LElbow"],
-    ["LElbow", "LWrist"],
-    ["Neck", "Chest"],
-    ["Chest", "RHip"],
-    # ["RHip", "RKnee"],
-    # ["RKnee", "RAnkle"],
-    ["Chest", "LHip"],
-    # ["LHip", "LKnee"],
-    # ["LKnee", "LAnkle"]
-]
-
-# ### Pose Detector
-
-HEAD = 25
-NECK = 26
-CHEST = 27
-
-
-class poseDetector():
-
-    def __init__(self, mode=False, upBody=True, smooth=True,
-                 detectionCon=0.5, trackCon=0.5):
-
-        self.mode = mode
-        self.upBody = upBody
-        self.smooth = smooth
-        self.detectionCon = detectionCon
-        self.trackCon = trackCon
-
-        self.mpDraw = mp.solutions.drawing_utils
-        self.mpPose = mp.solutions.pose
-        self.pose = self.mpPose.Pose(self.mode, self.upBody, self.smooth,
-                                     self.detectionCon, self.trackCon)
-        self.augmented_landmarks = []
-        self.augmented_connections = []
-
-    def _to_point(self, landmark):
-        point_dict = { "x": landmark.x, "y": landmark.y}
-        if landmark.HasField("visibility"):
-            point_dict["visibility"] = landmark.visibility
-        return point_dict
-
-    def _point_of(self, x, y, visibility = None):
-        point_dict = { "x": x, "y": y}
-        if visibility is not None:
-            point_dict["visibility"] = visibility
-        return point_dict
-
-    def foo(self, landmarks):
-        new_landmarks = []
-        for landmark in landmarks:
-            new_landmarks.append(self._to_point(landmark))
-
-        # --- 25. Head, 26. Neck
-        nose = self._to_point(landmarks[PoseLandmark.NOSE])
-
-        left_eye = self._to_point(landmarks[PoseLandmark.LEFT_EYE])
-        right_eye = self._to_point(landmarks[PoseLandmark.RIGHT_EYE])
-
-        eye_middle = find_normal(left_eye, right_eye, nose)
-
-        # nose -> eye middle is 2, then half proportion is vector divided by 4
-        half_proportion = to_vector(nose, eye_middle)
-        half_proportion = (half_proportion[0] / 4, half_proportion[1] / 4)
-
-        # See face proportions https://i.pinimg.com/originals/9d/e1/d1/9de1d16dab7a5d5a819bf351b21ac598.jpg
-        # nose -> head top is 5.5 => 11*0.5
-        head = self._point_of((nose["x"] + 11 * half_proportion[0]), (nose["y"] + 11 * half_proportion[1]))
-        new_landmarks.append(head)
-
-        # neck -> nose is 2.5 => 5*0.5
-        neck = self._point_of((nose["x"] - 5 * half_proportion[0]), (nose["y"] - 5 * half_proportion[1]))
-        new_landmarks.append(neck)
-
-        # --- 27. Chest
-        # chest == (LShoulder + RShoulder) / 2
-        lshoulder = self._to_point(landmarks[PoseLandmark.LEFT_SHOULDER])
-        rshoulder = self._to_point(landmarks[PoseLandmark.RIGHT_SHOULDER])
-        chest = self._point_of((rshoulder["x"] + lshoulder["x"]) / 2, (rshoulder["y"] + lshoulder["y"]) / 2)
-        new_landmarks.append(chest)
-
-        return new_landmarks
-
-    def augment_connections(self, connections):
-        return frozenset([
-            # (HEAD, NECK),
-            # (NECK, PoseLandmark.LEFT_SHOULDER),
-            # (NECK, PoseLandmark.RIGHT_SHOULDER),
-            # (NECK, CHEST),
-            # (PoseLandmark.RIGHT_SHOULDER, PoseLandmark.LEFT_SHOULDER),
-
-            (PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW),
-            (PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST),
-
-            (PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW),
-            (PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST),
-
-            # (CHEST, PoseLandmark.LEFT_HIP),
-            # (CHEST, PoseLandmark.RIGHT_HIP)
-        ])
-
-    def estimate_pose(self, img, draw=True):
-        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        self.results = self.pose.process(imgRGB)
-        if self.results.pose_landmarks:
-            self.augmented_landmarks = self.foo(self.results.pose_landmarks.landmark)
-            self.augmented_connections = self.augment_connections(self.mpPose.UPPER_BODY_POSE_CONNECTIONS)
-
-            if draw:
-                self.mpDraw.draw_landmarks(img, self.augmented_landmarks, self.augmented_connections)
-        return img
-
-    def get_landmarks(self):
-        return self.augmented_landmarks
-
-    # def get_connections(self, img, draw=True):
-    def get_connections(self, img):
-        pixel_height, pixel_width, _ = img.shape
-
-        self.connections_list = []
-
-        landmarks = self.get_landmarks()
-        connections = self.augmented_connections
-        debug = []
-        if landmarks and connections:
-            for (first_none_idx, second_node_idx) in connections:
-                first_node, second_node = landmarks[first_none_idx], landmarks[second_node_idx]
-                if first_node["visibility"] < 0.6 or second_node["visibility"] < 0.6:
-                    self.connections_list.append(None)
-                    self.connections_list.append(None)
-
-                    continue
-                debug.append((landmarks, first_node["visibility"], second_node["visibility"]))
-                first_node, second_node = (first_node["x"], first_node["y"]), (second_node["x"], second_node["y"])
-
-                first_node = (pixel_width*first_node[0], pixel_height*first_node[1])
-                second_node = (pixel_width*second_node[0], pixel_height*second_node[1])
-
-                self.connections_list.append(first_node)
-                self.connections_list.append(second_node)
-
-            # for id, lm in enumerate(self.augmented_landmarks):
-            # for id, lm in enumerate(self.results.pose_landmarks.landmark):
-            #     pixel_height, pixel_width, c = img.shape
-            #     # print(id, lm)
-            #     cx, cy = int(lm.x * pixel_width), int(lm.y * pixel_height)
-            #     self.connections_list.append([id, cx, cy])
-            #     if draw:
-            #         cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
-        return self.connections_list
-
-
-# ### Sample
-
 def crop_and_resize_matching(connections1, connections2):
     missed_keys = 0
     total_keys = len(connections1)
@@ -325,7 +138,7 @@ def crop_and_resize_matching(connections1, connections2):
     connections2_new = np.array(con2_without_none)
 
     if not con1_without_none:
-        return (connections1_new, connections2_new, (0, 0))
+        return connections1_new, connections2_new, (0, 0)
 
     connections1_new[:, 0] = connections1_new[:, 0] - min(connections1_new[:, 0])
     connections1_new[:, 1] = connections1_new[:, 1] - min(connections1_new[:, 1])
@@ -343,10 +156,15 @@ def crop_and_resize_matching(connections1, connections2):
     bounty = (total_keys - missed_keys) / total_keys
     cosine_score *= bounty
     weighted_score *= bounty
-    return (connections1_new, connections2_new, (cosine_score, weighted_score))
+    return connections1_new, connections2_new, (cosine_score, weighted_score)
 
 
-def match_frames_window(sample_frame_window, real_frame_window, sample_connections_window, real_connections_window, window_filter=None) -> float:
+def match_frames_window(
+        sample_frame_window,
+        real_frame_window,
+        sample_connections_window,
+        real_connections_window
+) -> float:
     sample_length = len(sample_frame_window)
     real_length = len(real_frame_window)
 
@@ -383,7 +201,7 @@ def initialize_sample(sample_frame_paths: list, window: int) -> tuple:
     sample_frame_window = np.array([cv.imread(str(pic_path)) for pic_path in sample_frame_paths])
     sample_connections_window = []
 
-    detector = poseDetector()
+    detector = PoseDetector()
 
     sample_index = 0
     for frame in sample_frame_window[-window:]:
@@ -401,13 +219,10 @@ def initialize_sample(sample_frame_paths: list, window: int) -> tuple:
     return sample_frame_window, sample_connections_window
 
 
-cap = cv.VideoCapture(0)
-
-
-def prepare_initial_real_frame(detector, window: int):
-    real_frame_window = np.repeat(None, window)
+def prepare_initial_real_frame(cap: cv.VideoCapture, detector: PoseDetector, window_length: int):
+    real_frame_window = np.repeat(None, window_length)
     real_connections_window = []
-    for i in range(window):
+    for i in range(window_length):
         success, frame = cap.read()
         if not success:
             continue
@@ -422,52 +237,32 @@ def prepare_initial_real_frame(detector, window: int):
         real_connections_window.append(connections_list)
     return real_frame_window, real_connections_window
 
-# TEST VIDEO
 
-VIDEOS_FOLDER = Path("./videos")
-# SHORT_NEXT_4_INCORRECT = VIDEOS_FOLDER / "short_next_4incorrect"
+def infinity_worker(data_dict):
+    cap = cv.VideoCapture(0)
+    detector = PoseDetector()
 
-SHORT_NEXT_1FORWARD = VIDEOS_FOLDER / "short_next_1forward"
-SHORT_NEXT_1LEFT = VIDEOS_FOLDER / "short_next_2left"
-BACK = VIDEOS_FOLDER / "slides-back"
-
-FRAME_PATTERN = "frame_*.jpg"
-
-
-@dataclass()
-class Gesture:
-    action: str
-    sample_frame_window: list
-    sample_connections_window: list
-
-
-DEBUG = True
-
-
-def infinity_worker(d, return_value: bool = False):
-    detector = poseDetector()
-
-    if DEBUG:
-        for video_name in d:
-            path = video_name
-            print("Loading image:", path)
-            video_to_images(f"{path}.mp4", path)
+    if _DEBUG:
+        for video_name in data_dict:
+            frames_dir_path = Path(video_name)
+            video_path = frames_dir_path.parent / (frames_dir_path.name + ".mp4")
+            print("Loading image:", frames_dir_path)
+            video_to_images(video_path, frames_dir_path)
 
     sample_frames_lists = []
-    for video_name in d:
-        path = Path(video_name)
-        sample_frame_paths = list(sorted(path.glob(FRAME_PATTERN)))
-        window_size = min(15, len(sample_frame_paths))
+    for video_name in data_dict:
+        frames_dir_path = Path(video_name)
+        sample_frame_paths = list(sorted(frames_dir_path.glob(_FRAME_PATTERN)))
+        window_size = min(WINDOW_MAXIMAL_SIZE, len(sample_frame_paths))
 
         sample_frame_window, sample_connections_window = initialize_sample(sample_frame_paths, window_size)
         gesture = Gesture(video_name, sample_frame_window, sample_connections_window)
 
         sample_frames_lists.append(gesture)
 
-    real_frame_window, real_connections_window = prepare_initial_real_frame(detector, window_size)
+    real_frame_window, real_connections_window = prepare_initial_real_frame(cap, detector, WINDOW_MAXIMAL_SIZE)
 
     previous_action_time = 0
-
     while True:
         success, frame = cap.read()
         if not success:
@@ -478,7 +273,8 @@ def infinity_worker(d, return_value: bool = False):
             connections_list = None
 
         np.roll(real_frame_window, -1)
-        real_frame_window[-1] = frame
+        if len(real_frame_window) > 0:
+            real_frame_window[-1] = frame
 
         real_connections_window[:-1] = real_connections_window[1:]
         real_connections_window[-1] = connections_list
@@ -486,7 +282,7 @@ def infinity_worker(d, return_value: bool = False):
         for gesture in sample_frames_lists:
             window_score = match_frames_window(gesture.sample_frame_window, real_frame_window,
                                                gesture.sample_connections_window, real_connections_window)
-            data: PlotData = d[gesture.action]
+            data: PlotData = data_dict[gesture.action]
             if data.xs:
                 data.xs.append(data.xs[-1] + 1)
             else:
@@ -502,25 +298,21 @@ def infinity_worker(d, return_value: bool = False):
                 min_y = min(last_100)
                 dist = max_y = min_y
                 global_max_y = max(data.ys)
-                if dist > 0.02  and avg_y > 0.8 and window_score > 0.95 and \
+                if dist > 0.02 and avg_y > 0.8 and window_score > 0.95 and \
                         window_score > (global_max_y * 0.99) and window_score > min(avg_y * 1.04, max_y):
                     print(f"Window triggered with score: {window_score} for {gesture.action}. Max {global_max_y}, AVG: {avg_y}")
-                    if time.time() - previous_action_time > 5:
+
+                    end_time = time.time()
+                    action_time_diff = end_time - previous_action_time
+                    if action_time_diff > ACTION_TRIGGER_TIMEOUT:
                         previous_action_time = time.time()
                         yield gesture.action
 
-
-        cv2.imshow("Image", frame)
-        cv2.waitKey(1)
-
-
-@dataclass
-class PlotData:
-    xs: list
-    ys: list
+        cv.imshow("Image", frame)
+        cv.waitKey(1)
 
 
-def animate(i, ax, data: PlotData):
+def animate_plot(i, ax, data: PlotData):
     xs = data.xs[-505:]
     ys = data.ys[-505:]
     # Draw x and y lists
@@ -533,11 +325,19 @@ def animate(i, ax, data: PlotData):
     plt.title('Actions')
 
 
-import pyautogui, time
+def do_work(data_dict):
+    for video_triggered in infinity_worker(data_dict):
+        print("Action:", video_triggered)
+        if video_triggered == "videos/short_next_1forward":
+            pyautogui.press('space')
+        elif video_triggered == "videos/slides-back":
+            pyautogui.press('left')
+        else:
+            print("Nothing")
 
 
 def main_without_plotting():
-    config_file = "./configuretion.json"
+    config_file = CONFIGURATION_PATH
 
     data_dict = dict()
     video_to_action_dict = {}
@@ -550,7 +350,7 @@ def main_without_plotting():
             data_dict[video] = PlotData([], [])
             video_to_action_dict[video] = entry["action"]
 
-    for video_triggered in infinity_worker(data_dict, True):
+    for video_triggered in infinity_worker(data_dict):
         print("Detected action:", video_triggered)
         if video_to_action_dict[video_triggered] == "Следующий слайд":
             # pyautogui.keyDown('alt')
@@ -565,21 +365,9 @@ def main_without_plotting():
         else:
             print("Nothing")
 
-pyautogui.FAILSAFE = False
-
-def test(data_dict):
-    for video_triggered in infinity_worker(data_dict):
-        print("Action:", video_triggered)
-        if video_triggered == "videos/short_next_1forward":
-            pyautogui.press('space')
-        elif video_triggered == "videos/slides-back":
-            pyautogui.press('left')
-        else:
-            print("Nothing")
-
 
 def main():
-    config_file = "./configuretion.json"
+    config_file = CONFIGURATION_PATH
 
     data_dict = dict()
     video_to_action_dict = {}
@@ -598,10 +386,10 @@ def main():
             fig = plt.figure()
             figs.append(fig)
             ax = fig.add_subplot(1, 1, 1)
-            an = animation.FuncAnimation(fig, animate, fargs=(ax, data_dict[video]), interval=100)
+            an = animation.FuncAnimation(fig, animate_plot, fargs=(ax, data_dict[video]), interval=100)
             anims.append(an)
 
-    threading.Thread(target=test, args=(data_dict,)).start()
+    threading.Thread(target=do_work, args=(data_dict,)).start()
     plt.show()
 
 
